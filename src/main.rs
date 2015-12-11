@@ -80,6 +80,15 @@ fn norm(value: i32, min: i32, max: i32, min_norm: i32, max_norm: i32) -> i32 {
 }
 */
 
+fn read_adc(adc: &pin::Pin) -> i32 {
+    let value: i32 = adc.read() as i32;
+    if value > 1000 {
+        0
+    } else {
+        value
+    }
+}
+
 fn run(args: &pt::run_args) {
   use zinc::drivers::chario::CharIO;
   use zinc::hal::timer::Timer;
@@ -99,37 +108,33 @@ fn run(args: &pt::run_args) {
   let mut compressor_state = false;
   let hysteresis_mdeg: i32 = 1500;
 
-  let setpoint = filter::MeanFilter::new(20, Some(setpoint_adc.read() as i32));
-  let current = filter::MeanFilter::new(20, Some(current_adc.read() as i32));
+  args.timer.wait(5);
+
+  let mut setpoint = filter::MeanFilter::new(10, read_adc(&setpoint_adc));
+  let mut current = filter::MeanFilter::new(10, read_adc(&current_adc));
 
   loop {
-      let setpoint_mdeg: i32 = match setpoint.filter(setpoint_adc.read() as i32) {
-          0...180 => 5000,
-          181...660 => 10000,
-          _ => 15000,
+      led_state = match led_state {
+          true => { args.led.set_high(); false },
+          false => { args.led.set_low(); true },
       };
 
-      let current_mdeg: i32 = (current.filter(current_adc.read() as i32) * 100 - 4000) as i32;
+      let current_mdeg: i32 = (current.filter(read_adc(&current_adc)) * 100) - 4000;
+      let setpoint_mdeg: i32 = match setpoint.filter(read_adc(&setpoint_adc)) {
+          0...180   => 5000,
+          181...660 => 10000,
+          _         => 15000,
+      };
 
-      if compressor_state {
-        args.uart.puts("[running] ");
-      } else {
-        args.uart.puts("[stopped] ");
+      match compressor_state {
+          false => args.uart.puts("[stopped] "),
+          true => args.uart.puts("[running] "),
       }
-
       args.uart.puts("setpoint: ");
       args.uart.puti(setpoint_mdeg as u32);
       args.uart.puts(" mdeg\tcurrent: ");
       args.uart.puti(current_mdeg as u32);
       args.uart.puts(" mdeg\n");
-
-      if led_state {
-        args.led.set_high();
-      } else {
-        args.led.set_low();
-      }
-
-      led_state = !led_state;
 
       if current_mdeg >= (setpoint_mdeg + hysteresis_mdeg) {
           if !compressor_state {
