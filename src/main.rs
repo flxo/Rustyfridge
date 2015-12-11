@@ -7,6 +7,9 @@ use zinc::hal::lpc17xx::{pin};
 use zinc::hal::pin::Adc;
 use zinc::hal::pin::Gpio;
 
+mod filter;
+use filter::Filter;
+
 platformtree!(
   lpc17xx@mcu {
     clock {
@@ -94,16 +97,19 @@ fn run(args: &pt::run_args) {
 
   let mut led_state = false;
   let mut compressor_state = false;
-  let hysteresis_mdeg = 1500;
+  let hysteresis_mdeg: i32 = 1500;
+
+  let setpoint = filter::MeanFilter::new(20, Some(setpoint_adc.read() as i32));
+  let current = filter::MeanFilter::new(20, Some(current_adc.read() as i32));
 
   loop {
-      let setpoint_mdeg = match setpoint_adc.read() {
+      let setpoint_mdeg: i32 = match setpoint.filter(setpoint_adc.read() as i32) {
           0...180 => 5000,
           181...660 => 10000,
           _ => 15000,
       };
 
-      let current_mdeg = current_adc.read() * 100 - 4000;
+      let current_mdeg: i32 = (current.filter(current_adc.read() as i32) * 100 - 4000) as i32;
 
       if compressor_state {
         args.uart.puts("[running] ");
@@ -112,9 +118,9 @@ fn run(args: &pt::run_args) {
       }
 
       args.uart.puts("setpoint: ");
-      args.uart.puti(setpoint_mdeg);
+      args.uart.puti(setpoint_mdeg as u32);
       args.uart.puts(" mdeg\tcurrent: ");
-      args.uart.puti(current_mdeg);
+      args.uart.puti(current_mdeg as u32);
       args.uart.puts(" mdeg\n");
 
       if led_state {
@@ -130,7 +136,7 @@ fn run(args: &pt::run_args) {
             compressor_state = true;
             args.compressor.set_high();
           }
-      } else {
+      } if current_mdeg <= (setpoint_mdeg - hysteresis_mdeg) {
           if compressor_state {
             compressor_state = false;
             args.compressor.set_low();
