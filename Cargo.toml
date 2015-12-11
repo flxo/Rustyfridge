@@ -1,0 +1,13 @@
+[package]
+name = "rustyfridge"
+version = "0.0.1"
+
+[features]
+default = ["mcu_lpc17xx"]
+mcu_lpc17xx = ["zinc/mcu_lpc17xx"]
+
+[dependencies]
+zinc = { path =  "../zinc" }
+macro_zinc = { path = "../zinc/macro_zinc" }
+macro_platformtree = { path = "../zinc/macro_platformtree" }
+core = { git = "https://github.com/hackndev/rust-libcore" }
