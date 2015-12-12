@@ -17,7 +17,7 @@ source = "git+https://github.com/hackndev/rust-libcore#d9dc4f94163a78efb4da176db
 name = "ioreg"
 version = "0.1.0"
 dependencies = [
- "syntaxext_lint 0.1.1 (git+https://github.com/mcoffin/syntaxext_lint.git?rev=4674558eedb8e4b51d7e4644c30d788931c5e0bb)",
+ "syntaxext_lint 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -45,8 +45,8 @@ dependencies = [
 
 [[package]]
 name = "syntaxext_lint"
-version = "0.1.1"
-source = "git+https://github.com/mcoffin/syntaxext_lint.git?rev=4674558eedb8e4b51d7e4644c30d788931c5e0bb#4674558eedb8e4b51d7e4644c30d788931c5e0bb"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "volatile_cell"
