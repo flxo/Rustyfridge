@@ -3,7 +3,6 @@
 #![plugin(macro_platformtree)]
 
 extern crate zinc;
-use zinc::hal::lpc17xx::{pin};
 use zinc::drivers::chario::CharIO;
 use zinc::hal::timer::Timer;
 
@@ -42,8 +41,10 @@ platformtree!(
       0 {
         uart_tx@2;
         uart_rx@3;
-        led@22 { direction = "out"; }
         compressor@8 { direction = "out"; }
+        led@22 { direction = "out"; }
+        adc0@23 { direction = "out"; function = "ad0_0"; }
+        adc2@25 { direction = "out"; function = "ad0_2"; }
       }
     }
   }
@@ -52,10 +53,12 @@ platformtree!(
     single_task {
       loop = "run";
       args {
+        compressor = &compressor;
+        current = &adc0;
+        led = &led;
+        setpoint = &adc2;
         timer = &timer;
         uart = &uart;
-        led = &led;
-        compressor = &compressor;
       }
     }
   }
@@ -64,20 +67,9 @@ platformtree!(
 fn run(args: &pt::run_args) {
     args.uart.puts("starting\n");
 
-    // TODO: move to pt
-    let setpoint_adc = pin::Pin::new(
-        pin::Port::Port0, 23,
-        pin::Function::AltFunction1,
-        None);
-    // TODO: move to pt
-    let current_adc = pin::Pin::new(
-        pin::Port::Port0, 25,
-        pin::Function::AltFunction1,
-        None);
-
     let mut data = Data::default();
     let mut adc_filter: AdcFilter = AdcFilter::new(10, 10);
-    let mut adc_input: AdcRead = AdcRead::new(current_adc, setpoint_adc);
+    let mut adc_input: AdcRead = AdcRead::new(*args.current, *args.setpoint);
     let mut compressor: Compressor = Compressor::new(*args.compressor);
     let mut control: Control = Control::new(1500);
     let mut current: Current = Current::default();
