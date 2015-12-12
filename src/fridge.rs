@@ -14,13 +14,13 @@ pub trait Step {
     fn process(&mut self, data: &mut Data);
 }
 
-pub struct AdcRead {
-    current: pin::Pin,
-    setpoint: pin::Pin,
+pub struct AdcRead<'s> {
+    current: &'s pin::Pin,
+    setpoint: &'s pin::Pin,
 }
 
-impl AdcRead {
-    pub fn new(c: pin::Pin, s: pin::Pin) -> AdcRead {
+impl<'s> AdcRead<'s> {
+    pub fn new(c: &'s pin::Pin, s: &'s pin::Pin) -> AdcRead<'s> {
         AdcRead {
             current: c,
             setpoint: s,
@@ -38,7 +38,7 @@ impl AdcRead {
     }
 }
 
-impl Step for AdcRead {
+impl<'s> Step for AdcRead<'s> {
     fn process(&mut self, data: &mut Data) {
         let current = self.current.read() as i32;
         data.current_adc = self.clip(current, 0, 4096);
@@ -113,13 +113,13 @@ impl Step for AdcFilter {
     }
 }
 
-pub struct StateLed {
+pub struct StateLed<'s> {
     on: bool,
-    pin: pin::Pin,
+    pin: &'s pin::Pin,
 }
 
-impl StateLed {
-    pub fn new(l: pin::Pin) -> StateLed {
+impl<'s> StateLed<'s> {
+    pub fn new(l: &'s pin::Pin) -> StateLed<'s> {
         StateLed {
             on: false,
             pin: l,
@@ -127,7 +127,7 @@ impl StateLed {
     }
 }
 
-impl Step for StateLed {
+impl<'s> Step for StateLed<'s> {
     fn process(&mut self, data: &mut Data) {
         let _ = data;
         self.on = match self.on {
@@ -159,19 +159,19 @@ impl Step for Control {
     }
 }
 
-pub struct Compressor {
-    pin: pin::Pin,
+pub struct Compressor<'s> {
+    pin: &'s pin::Pin,
 }
 
-impl Compressor {
-    pub fn new(p: pin::Pin) -> Compressor {
+impl<'s> Compressor<'s> {
+    pub fn new(p: &'s pin::Pin) -> Compressor {
         Compressor {
-            pin: p
+            pin: p,
         }
     }
 }
 
-impl Step for Compressor {
+impl<'s> Step for Compressor<'s> {
     fn process(&mut self, data: &mut Data) {
         match data.compressor {
             false => self.pin.set_low(),

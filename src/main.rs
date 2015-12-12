@@ -69,12 +69,12 @@ fn run(args: &pt::run_args) {
 
     let mut data = Data::default();
     let mut adc_filter: AdcFilter = AdcFilter::new(10, 10);
-    let mut adc_input: AdcRead = AdcRead::new(*args.current, *args.setpoint);
-    let mut compressor: Compressor = Compressor::new(*args.compressor);
+    let mut adc_input: AdcRead = AdcRead::new(args.current, args.setpoint);
+    let mut compressor: Compressor = Compressor::new(args.compressor);
     let mut control: Control = Control::new(1500);
     let mut current: Current = Current::default();
     let mut setpoint: Setpoint = Setpoint::default();
-    let mut state_led: StateLed = StateLed::new(*args.led);
+    let mut state_led: StateLed = StateLed::new(args.led);
 
     loop {
         adc_input.process(&mut data);
