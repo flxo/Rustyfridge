@@ -52,11 +52,11 @@ pub struct Setpoint;
 
 impl Step for Setpoint {
     fn process(&mut self, data: &mut Data) {
-      data.setpoint_mdeg = match data.setpoint_adc {
-          0...180   => 5000,
-          181...660 => 10000,
-          _         => 15000,
-      }
+        data.setpoint_mdeg = match data.setpoint_adc {
+            0...180   => 5000,
+            181...660 => 10000,
+            _         => 15000,
+        }
     }
 }
 
@@ -151,11 +151,11 @@ impl Control {
 
 impl Step for Control {
     fn process(&mut self, data: &mut Data) {
-      if data.current_mdeg >= (data.setpoint_mdeg + self.hysteresis_mdeg) {
-          data.compressor = true;
-      } if data.current_mdeg <= (data.setpoint_mdeg - self.hysteresis_mdeg) {
-          data.compressor = false;
-      }
+        if data.current_mdeg >= (data.setpoint_mdeg + self.hysteresis_mdeg) {
+            data.compressor = true;
+        } if data.current_mdeg <= (data.setpoint_mdeg - self.hysteresis_mdeg) {
+            data.compressor = false;
+        }
     }
 }
 

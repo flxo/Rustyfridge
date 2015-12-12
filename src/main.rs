@@ -10,58 +10,58 @@ mod fridge;
 use fridge::*;
 
 platformtree!(
-  lpc17xx@mcu {
-    clock {
-      source = "main-oscillator";
-      source_frequency = 12_000_000;
-      pll {
-        m = 50;
-        n = 3;
-        divisor = 4;
-      }
+    lpc17xx@mcu {
+        clock {
+            source = "main-oscillator";
+            source_frequency = 12_000_000;
+            pll {
+                m = 50;
+                n = 3;
+                divisor = 4;
+            }
+        }
+
+        timer {
+            timer@1 {
+                counter = 25;
+                divisor = 4;
+            }
+        }
+
+        uart {
+            uart@0 {
+                baud_rate = 115200;
+                mode = "8N1";
+                tx = &uart_tx;
+                rx = &uart_rx;
+            }
+        }
+
+        gpio {
+            0 {
+                uart_tx@2;
+                uart_rx@3;
+                compressor@8 { direction = "out"; }
+                led@22 { direction = "out"; }
+                adc0@23 { direction = "out"; function = "ad0_0"; }
+                adc2@25 { direction = "out"; function = "ad0_2"; }
+            }
+        }
     }
 
-    timer {
-      timer@1 {
-        counter = 25;
-        divisor = 4;
-      }
-    }
-
-    uart {
-      uart@0 {
-        baud_rate = 115200;
-        mode = "8N1";
-        tx = &uart_tx;
-        rx = &uart_rx;
-      }
-    }
-
-    gpio {
-      0 {
-        uart_tx@2;
-        uart_rx@3;
-        compressor@8 { direction = "out"; }
-        led@22 { direction = "out"; }
-        adc0@23 { direction = "out"; function = "ad0_0"; }
-        adc2@25 { direction = "out"; function = "ad0_2"; }
-      }
-    }
-  }
-
-  os {
+os {
     single_task {
-      loop = "run";
-      args {
-        compressor = &compressor;
-        current = &adc0;
-        led = &led;
-        setpoint = &adc2;
-        timer = &timer;
-        uart = &uart;
-      }
+        loop = "run";
+        args {
+            compressor = &compressor;
+            current = &adc0;
+            led = &led;
+            setpoint = &adc2;
+            timer = &timer;
+            uart = &uart;
+        }
     }
-  }
+}
 );
 
 fn run(args: &pt::run_args) {
