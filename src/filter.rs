@@ -19,6 +19,7 @@ impl MeanFilter {
 impl Filter for MeanFilter {
     fn filter(&mut self, value: i32) -> i32 {
         let n = self.num as i32;
-        self.last = (self.last * (n-1) + value) / n
+        self.last = (self.last * (n-1) + value) / n;
+        self.last
     }
 }
