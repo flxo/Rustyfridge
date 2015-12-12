@@ -68,13 +68,14 @@ fn run(args: &pt::run_args) {
     args.uart.puts("starting\n");
 
     let mut data = Data::default();
-    let mut adc_filter: AdcFilter = AdcFilter::new(10, 10);
-    let mut adc_input: AdcRead = AdcRead::new(args.current, args.setpoint);
-    let mut compressor: Compressor = Compressor::new(args.compressor);
-    let mut control: Control = Control::new(1500);
-    let mut current: Current = Current::default();
-    let mut setpoint: Setpoint = Setpoint::default();
-    let mut state_led: StateLed = StateLed::new(args.led);
+    let mut adc_filter = AdcFilter::new(10, 10);
+    let mut adc_input = AdcRead::new(args.current, args.setpoint);
+    let mut compressor = Compressor::new(args.compressor);
+    let mut control = Control::new(1500);
+    let mut current = Current::default();
+    let mut setpoint = Setpoint::default();
+    let mut state_led = StateLed::new(args.led);
+    let mut trace = Trace::new(args.uart);
 
     loop {
         adc_input.process(&mut data);
@@ -84,6 +85,7 @@ fn run(args: &pt::run_args) {
         control.process(&mut data);
         compressor.process(&mut data);
         state_led.process(&mut data);
-        args.timer.wait_ms(500);
+        trace.process(&mut data);
+        args.timer.wait_ms(1000);
     }
 }

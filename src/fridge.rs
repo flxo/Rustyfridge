@@ -1,5 +1,6 @@
 use zinc::hal::lpc17xx::{pin};
 use zinc::hal::pin::{Adc, Gpio};
+use zinc::drivers::chario::CharIO;
 
 #[derive(Default)]
 pub struct Data {
@@ -12,6 +13,34 @@ pub struct Data {
 
 pub trait Step {
     fn process(&mut self, data: &mut Data);
+}
+
+pub trait Filter {
+    fn filter(&mut self, value: i32) -> i32;
+}
+
+pub struct MeanFilter {
+    last: Option<i32>,
+    num: i32,
+}
+
+impl MeanFilter {
+    pub fn new(num: i32) -> MeanFilter {
+        MeanFilter {
+            last: None,
+            num: num,
+        }
+    }
+}
+
+impl Filter for MeanFilter {
+    fn filter(&mut self, value: i32) -> i32 {
+        self.last = match self.last {
+            Some(l) => Some((l * (self.num - 1) + value) / self.num),
+            None    => Some(value),
+        };
+        self.last.unwrap()
+    }
 }
 
 pub struct AdcRead<'s> {
@@ -70,28 +99,6 @@ impl Step for Current {
     }
 }
 
-struct MeanFilter {
-    last: Option<i32>,
-    num: i32,
-}
-
-impl MeanFilter {
-    pub fn new(num: i32) -> MeanFilter {
-        MeanFilter {
-            last: None,
-            num: num,
-        }
-    }
-
-    fn filter(&mut self, value: i32) -> i32 {
-        self.last = match self.last {
-            Some(l) => Some((l * (self.num - 1) + value) / self.num),
-            None    => Some(value),
-        };
-        self.last.unwrap()
-    }
-}
-
 pub struct AdcFilter {
     current_filter: MeanFilter,
     setpoint_filter: MeanFilter,
@@ -128,8 +135,7 @@ impl<'s> StateLed<'s> {
 }
 
 impl<'s> Step for StateLed<'s> {
-    fn process(&mut self, data: &mut Data) {
-        let _ = data;
+    fn process(&mut self, _data: &mut Data) {
         self.on = match self.on {
             false => { self.pin.set_high(); true },
             true => { self.pin.set_low(); false },
@@ -177,5 +183,39 @@ impl<'s> Step for Compressor<'s> {
             false => self.pin.set_low(),
             true  => self.pin.set_high(),
         }
+    }
+}
+
+pub struct Trace<'s> {
+    io: &'s CharIO,
+}
+
+impl<'s> Trace<'s> {
+    pub fn new(cio: &'s CharIO) -> Trace {
+        Trace {
+            io: cio,
+        }
+    }
+
+    fn print_deg(&self, value: i32) {
+        let v = value as u32;
+        self.io.puti(v / 1000);
+        self.io.puts(".");
+        self.io.puti(v % 1000);
+        self.io.puts(" deg");
+    }
+}
+
+impl<'s> Step for Trace<'s> {
+    fn process(&mut self, data: &mut Data) {
+        match data.compressor {
+            true  => self.io.puts("[cooling]: "),
+            false => self.io.puts("[stopped]: "),
+        }
+        self.io.puts("setpoint: ");
+        self.print_deg(data.setpoint_mdeg);
+        self.io.puts("\t");
+        self.io.puts("current: ");
+        self.print_deg(data.current_mdeg);
     }
 }
