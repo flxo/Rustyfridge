@@ -1,9 +1,40 @@
-use zinc::hal::lpc17xx::{pin};
-use zinc::hal::pin::{Adc, Gpio};
 use zinc::drivers::chario::CharIO;
+use zinc::hal::pin::{Adc, Gpio};
+use zinc::hal::timer::Timer;
+use filter::filter::{Filter, MeanFilter};
 
+#[allow(dead_code)]
+pub struct Clock<'a> {
+    timer: &'a Timer,
+}
+
+static mut overflows: u32 = 0;
+static mut time: u32 = 0;
+
+#[allow(dead_code)]
+impl<'a> Clock<'a> {
+    fn new(t: &'a Timer) -> Clock {
+        Clock {
+            timer: t,
+        }
+    }
+
+    fn now(&self) -> u64 {
+        let n = self.timer.get_counter();
+        unsafe {
+            if n < time {
+                overflows += 1;
+            }
+            time = n;
+            (overflows as u64) << 32 | (n as u64)
+        }
+    }
+}
+
+#[allow(dead_code)]
 #[derive(Default)]
-pub struct Data {
+struct Data {
+    timestamp: u64,
     setpoint_adc: i32,
     setpoint_mdeg: i32,
     current_adc: i32,
@@ -11,46 +42,20 @@ pub struct Data {
     compressor: bool,
 }
 
-pub trait Step {
+trait Step {
     fn process(&mut self, data: &mut Data);
 }
 
-pub trait Filter {
-    fn filter(&mut self, value: i32) -> i32;
-}
-
-pub struct MeanFilter {
-    last: Option<i32>,
-    num: i32,
-}
-
-impl MeanFilter {
-    pub fn new(num: i32) -> MeanFilter {
-        MeanFilter {
-            last: None,
-            num: num,
-        }
-    }
-}
-
-impl Filter for MeanFilter {
-    fn filter(&mut self, value: i32) -> i32 {
-        self.last = match self.last {
-            Some(l) => Some((l * (self.num - 1) + value) / self.num),
-            None    => Some(value),
-        };
-        self.last.unwrap()
-    }
-}
-
-pub struct AdcRead<'s> {
-    current: &'s pin::Pin,
-    setpoint: &'s pin::Pin,
+struct AdcRead<'s> {
+    clock: &'s Clock<'s>,
+    current: &'s Adc,
+    setpoint: &'s Adc,
 }
 
 impl<'s> AdcRead<'s> {
-    pub fn new(c: &'s pin::Pin, s: &'s pin::Pin) -> AdcRead<'s> {
+    fn new(clk: &'s Clock<'s>, c: &'s Adc, s: &'s Adc) -> AdcRead<'s> {
         AdcRead {
+            clock: clk,
             current: c,
             setpoint: s,
         }
@@ -69,6 +74,7 @@ impl<'s> AdcRead<'s> {
 
 impl<'s> Step for AdcRead<'s> {
     fn process(&mut self, data: &mut Data) {
+        data.timestamp = self.clock.now();
         let current = self.current.read() as i32;
         data.current_adc = self.clip(current, 0, 4096);
         let setpoint = self.setpoint.read() as i32;
@@ -77,7 +83,7 @@ impl<'s> Step for AdcRead<'s> {
 }
 
 #[derive(Default)]
-pub struct Setpoint;
+struct Setpoint;
 
 impl Step for Setpoint {
     fn process(&mut self, data: &mut Data) {
@@ -90,7 +96,7 @@ impl Step for Setpoint {
 }
 
 #[derive(Default)]
-pub struct Current;
+struct Current;
 
 impl Step for Current {
     fn process(&mut self, data: &mut Data) {
@@ -99,34 +105,37 @@ impl Step for Current {
     }
 }
 
-pub struct AdcFilter {
+struct AdcFilter<'s> {
+    clock: &'s Clock<'s>,
     current_filter: MeanFilter,
     setpoint_filter: MeanFilter,
 }
 
-impl AdcFilter {
-    pub fn new(setpoint: i32, current: i32) -> AdcFilter {
+impl<'s> AdcFilter<'s> {
+    fn new(clk: &'s Clock<'s>, setpoint: i32, current: i32) -> AdcFilter {
         AdcFilter {
+            clock: clk,
             current_filter: MeanFilter::new(current),
             setpoint_filter: MeanFilter::new(setpoint),
         }
     }
 }
 
-impl Step for AdcFilter {
+impl<'s> Step for AdcFilter<'s> {
     fn process(&mut self, data: &mut Data) {
+        let _d = self.clock.now() - data.timestamp;
         data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
         data.current_adc = self.current_filter.filter(data.current_adc);
     }
 }
 
-pub struct StateLed<'s> {
+struct StateLed<'s> {
     on: bool,
-    pin: &'s pin::Pin,
+    pin: &'s Gpio,
 }
 
 impl<'s> StateLed<'s> {
-    pub fn new(l: &'s pin::Pin) -> StateLed<'s> {
+    fn new(l: &'s Gpio) -> StateLed<'s> {
         StateLed {
             on: false,
             pin: l,
@@ -143,12 +152,12 @@ impl<'s> Step for StateLed<'s> {
     }
 }
 
-pub struct Control {
+struct Control {
     hysteresis_mdeg: i32,
 }
 
 impl Control {
-    pub fn new(hysteresis: i32) -> Control {
+    fn new(hysteresis: i32) -> Control {
         Control {
             hysteresis_mdeg: hysteresis,
         }
@@ -165,12 +174,12 @@ impl Step for Control {
     }
 }
 
-pub struct Compressor<'s> {
-    pin: &'s pin::Pin,
+struct Compressor<'s> {
+    pin: &'s Gpio,
 }
 
 impl<'s> Compressor<'s> {
-    pub fn new(p: &'s pin::Pin) -> Compressor {
+    fn new(p: &'s Gpio) -> Compressor {
         Compressor {
             pin: p,
         }
@@ -186,19 +195,25 @@ impl<'s> Step for Compressor<'s> {
     }
 }
 
-pub struct Trace<'s> {
+struct Trace<'s> {
     io: &'s CharIO,
 }
 
 impl<'s> Trace<'s> {
-    pub fn new(cio: &'s CharIO) -> Trace {
+    fn new(cio: &'s CharIO) -> Trace {
         Trace {
             io: cio,
         }
     }
 
     fn print_deg(&self, value: i32) {
-        let v = value as u32;
+        let v;
+        if value < 0 {
+            self.io.puts("-");
+            v = (value * -1) as u32
+        } else {
+            v = value as u32;
+        }
         self.io.puti(v / 1000);
         self.io.puts(".");
         self.io.puti(v % 1000);
@@ -217,5 +232,55 @@ impl<'s> Step for Trace<'s> {
         self.io.puts("\t");
         self.io.puts("current: ");
         self.print_deg(data.current_mdeg);
+        self.io.puts("\n");
     }
 }
+
+pub struct Platform<'a> {
+    pub compressor: &'a Gpio,
+    pub led: &'a Gpio,
+    pub current: &'a Adc,
+    pub setpoint: &'a Adc,
+    pub timer: &'a Timer,
+    pub uart: &'a CharIO,
+}
+
+pub fn run(p: &Platform, period: u32, loops: Option<u32>) {
+    let mut data = Data::default();
+    let clock = Clock::new(p.timer);
+
+    let mut adc_filter = AdcFilter::new(&clock, 10, 10);
+    let mut adc_input = AdcRead::new(&clock, p.current, p.setpoint);
+    let mut compressor = Compressor::new(p.compressor);
+    let mut control = Control::new(1500);
+    let mut current = Current::default();
+    let mut setpoint = Setpoint::default();
+    let mut state_led = StateLed::new(p.led);
+    let mut trace = Trace::new(p.uart);
+
+    let mut l = 0;
+
+    loop {
+        adc_input.process(&mut data);
+        adc_filter.process(&mut data);
+        setpoint.process(&mut data);
+        current.process(&mut data);
+        control.process(&mut data);
+        compressor.process(&mut data);
+        state_led.process(&mut data);
+        trace.process(&mut data);
+
+        match loops {
+            Some(x) => {
+                l += 1;
+                if l >= x {
+                    break;
+                }
+            },
+            None => {},
+        }
+
+        p.timer.wait_ms(period);
+    }
+}
+

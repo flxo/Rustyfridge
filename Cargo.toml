@@ -16,3 +16,4 @@ rust-libcore = "*"
 
 [dev-dependencies]
 time = "0.1"
+rand = "0.3"
