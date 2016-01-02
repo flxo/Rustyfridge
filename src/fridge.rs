@@ -1,9 +1,9 @@
+#![allow(dead_code)]
 use zinc::drivers::chario::CharIO;
 use zinc::hal::pin::{Adc, Gpio};
 use zinc::hal::timer::Timer;
-use filter::filter::{Filter, MeanFilter};
+use filter::filter::{Filter, MeanFilter, PlausibleFilter};
 
-#[allow(dead_code)]
 pub struct Clock<'a> {
     timer: &'a Timer,
 }
@@ -11,7 +11,6 @@ pub struct Clock<'a> {
 static mut overflows: u32 = 0;
 static mut time: u32 = 0;
 
-#[allow(dead_code)]
 impl<'a> Clock<'a> {
     fn new(t: &'a Timer) -> Clock {
         Clock {
@@ -31,18 +30,19 @@ impl<'a> Clock<'a> {
     }
 }
 
-#[allow(dead_code)]
-#[derive(Default)]
-struct Data {
-    timestamp: u64,
-    setpoint_adc: i32,
-    setpoint_mdeg: i32,
-    current_adc: i32,
-    current_mdeg: i32,
-    compressor: bool,
+#[derive(Default, Clone)]
+pub struct Data {
+    pub timestamp: u64,
+    pub setpoint_adc_raw: i32,
+    pub setpoint_adc: i32,
+    pub setpoint_mdeg: i32,
+    pub current_adc_raw: i32,
+    pub current_adc: i32,
+    pub current_mdeg: i32,
+    pub compressor: bool,
 }
 
-trait Step {
+pub trait Step {
     fn process(&mut self, data: &mut Data);
 }
 
@@ -61,7 +61,7 @@ impl<'s> AdcRead<'s> {
         }
     }
 
-    fn clip(&self, value: i32, min: i32, max: i32) -> i32 {
+    fn clip(value: i32, min: i32, max: i32) -> i32 {
         if value < min {
             min
         } else if value > max {
@@ -76,18 +76,20 @@ impl<'s> Step for AdcRead<'s> {
     fn process(&mut self, data: &mut Data) {
         data.timestamp = self.clock.now();
         let current = self.current.read() as i32;
-        data.current_adc = self.clip(current, 0, 4096);
+        data.current_adc_raw = current;
+        data.current_adc = AdcRead::clip(current, 0, 4096);
         let setpoint = self.setpoint.read() as i32;
-        data.setpoint_adc = self.clip(setpoint, 0, 4096);
+        data.setpoint_adc_raw = setpoint;
+        data.setpoint_adc = AdcRead::clip(setpoint, 0, 4096);
     }
 }
 
 #[derive(Default)]
-struct Setpoint;
+pub struct Setpoint;
 
-impl Step for Setpoint {
-    fn process(&mut self, data: &mut Data) {
-        data.setpoint_mdeg = match data.setpoint_adc {
+impl Setpoint {
+    pub fn adc_to_mdeg(adc: i32) -> i32 {
+        match adc {
             0...180   => 5000,
             181...660 => 10000,
             _         => 15000,
@@ -95,18 +97,32 @@ impl Step for Setpoint {
     }
 }
 
+impl Step for Setpoint {
+    fn process(&mut self, data: &mut Data) {
+        data.setpoint_mdeg = Setpoint::adc_to_mdeg(data.setpoint_adc)
+    }
+}
+
 #[derive(Default)]
-struct Current;
+pub struct Current;
+
+impl Current {
+    pub fn adc_to_mdeg(adc: i32) -> i32 {
+        // the used sensor fails by 4deg...
+        adc * 100 - 4000
+    }
+}
 
 impl Step for Current {
     fn process(&mut self, data: &mut Data) {
-        // the used sensor fails by 4deg...
-        data.current_mdeg = data.current_adc * 100 - 4000;
+        data.current_mdeg = Current::adc_to_mdeg(data.current_adc);
     }
 }
 
 struct AdcFilter<'s> {
     clock: &'s Clock<'s>,
+    current_filter_plausible: PlausibleFilter,
+    setpoint_filter_plausible: PlausibleFilter,
     current_filter: MeanFilter,
     setpoint_filter: MeanFilter,
 }
@@ -115,6 +131,8 @@ impl<'s> AdcFilter<'s> {
     fn new(clk: &'s Clock<'s>, setpoint: i32, current: i32) -> AdcFilter {
         AdcFilter {
             clock: clk,
+            current_filter_plausible: PlausibleFilter::new(10, 50),
+            setpoint_filter_plausible : PlausibleFilter::new(10, 50),
             current_filter: MeanFilter::new(current),
             setpoint_filter: MeanFilter::new(setpoint),
         }
@@ -123,8 +141,10 @@ impl<'s> AdcFilter<'s> {
 
 impl<'s> Step for AdcFilter<'s> {
     fn process(&mut self, data: &mut Data) {
-        let _d = self.clock.now() - data.timestamp;
+        let _ = self.clock;
         data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
+        data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
+        data.current_adc = self.current_filter_plausible.filter(data.current_adc);
         data.current_adc = self.current_filter.filter(data.current_adc);
     }
 }
@@ -195,12 +215,12 @@ impl<'s> Step for Compressor<'s> {
     }
 }
 
-struct Trace<'s> {
+pub struct Trace<'s> {
     io: &'s CharIO,
 }
 
 impl<'s> Trace<'s> {
-    fn new(cio: &'s CharIO) -> Trace {
+    pub fn new(cio: &'s CharIO) -> Trace {
         Trace {
             io: cio,
         }
@@ -245,22 +265,19 @@ pub struct Platform<'a> {
     pub uart: &'a CharIO,
 }
 
-pub fn run(p: &Platform, period: u32, loops: Option<u32>) {
-    let mut data = Data::default();
+pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
     let clock = Clock::new(p.timer);
+    let mut data = Data::default();
 
     let mut adc_filter = AdcFilter::new(&clock, 10, 10);
     let mut adc_input = AdcRead::new(&clock, p.current, p.setpoint);
     let mut compressor = Compressor::new(p.compressor);
-    let mut control = Control::new(1500);
+    let mut control = Control::new(1000);
     let mut current = Current::default();
     let mut setpoint = Setpoint::default();
     let mut state_led = StateLed::new(p.led);
-    let mut trace = Trace::new(p.uart);
 
-    let mut l = 0;
-
-    loop {
+    let mut r = || {
         adc_input.process(&mut data);
         adc_filter.process(&mut data);
         setpoint.process(&mut data);
@@ -268,19 +285,21 @@ pub fn run(p: &Platform, period: u32, loops: Option<u32>) {
         control.process(&mut data);
         compressor.process(&mut data);
         state_led.process(&mut data);
-        trace.process(&mut data);
+        logger.process(&mut data);
+    };
 
-        match loops {
-            Some(x) => {
-                l += 1;
-                if l >= x {
-                    break;
-                }
-            },
-            None => {},
-        }
+    match loops {
+        Some(n) => for _ in 0..n { r(); },
+        None    => r(),
+    }
+}
 
-        p.timer.wait_ms(period);
+mod test {
+    #[test]
+    fn adc_clip() {
+        assert!(::fridge::AdcRead::clip(0, -100, 100) == 0);
+        assert!(::fridge::AdcRead::clip(-200, -100, 100) == -100);
+        assert!(::fridge::AdcRead::clip(200, -100, 100) == 100);
     }
 }
 

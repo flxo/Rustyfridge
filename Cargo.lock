@@ -2,6 +2,7 @@
 name = "rustyfridge"
 version = "0.0.1"
 dependencies = [
+ "gnuplot 0.0.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "macro_platformtree 0.1.0",
  "rand 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -25,6 +26,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "num 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "gnuplot"
+version = "0.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "ioreg"

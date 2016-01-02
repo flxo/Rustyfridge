@@ -5,15 +5,15 @@ pub mod filter {
     }
 
     pub struct MeanFilter {
-        last: Option<i32>,
-        num: i32,
+        last: Option<f32>,
+        num: f32,
     }
 
     impl MeanFilter {
-        pub fn new(num: i32) -> MeanFilter {
+        pub fn new(n: i32) -> MeanFilter {
             MeanFilter {
                 last: None,
-                num: num,
+                num: n as f32,
             }
         }
     }
@@ -21,10 +21,10 @@ pub mod filter {
     impl Filter for MeanFilter {
         fn filter(&mut self, value: i32) -> i32 {
             self.last = match self.last {
-                Some(l) => Some((l * (self.num - 1) + value) / self.num),
-                None    => Some(value),
+                Some(l) => Some((l * (self.num - 1.0) + value as f32) / self.num),
+                None    => Some(value as f32),
             };
-            self.last.unwrap()
+            self.last.unwrap() as i32
         }
     }
 
@@ -48,7 +48,6 @@ pub mod filter {
         }
     }
 
-    #[allow(dead_code)]
     pub struct PlausibleFilter {
         num_fails: u16,
         fails: u16,
@@ -56,7 +55,6 @@ pub mod filter {
         last: Option<i32>,
     }
 
-     #[allow(dead_code)]
     impl PlausibleFilter {
         pub fn new(n: u16, d: i32) -> PlausibleFilter {
             PlausibleFilter {
