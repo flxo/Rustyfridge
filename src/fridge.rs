@@ -225,33 +225,34 @@ impl<'s> Trace<'s> {
             io: cio,
         }
     }
-
-    fn print_deg(&self, value: i32) {
-        let v;
-        if value < 0 {
-            self.io.puts("-");
-            v = (value * -1) as u32
-        } else {
-            v = value as u32;
-        }
-        self.io.puti(v / 1000);
-        self.io.puts(".");
-        self.io.puti(v % 1000);
-        self.io.puts(" deg");
-    }
 }
 
 impl<'s> Step for Trace<'s> {
     fn process(&mut self, data: &mut Data) {
+
+        let p = |value| {
+            let v;
+            if value < 0 {
+                self.io.puts("-");
+                v = (value * -1) as u32
+            } else {
+                v = value as u32;
+            }
+            self.io.puti(v / 1000);
+            self.io.puts(".");
+            self.io.puti(v % 1000);
+            self.io.puts(" deg");
+        };
+
         match data.compressor {
             true  => self.io.puts("[cooling]: "),
             false => self.io.puts("[stopped]: "),
         }
         self.io.puts("setpoint: ");
-        self.print_deg(data.setpoint_mdeg);
+        p(data.setpoint_mdeg);
         self.io.puts("\t");
         self.io.puts("current: ");
-        self.print_deg(data.current_mdeg);
+        p(data.current_mdeg);
         self.io.puts("\n");
     }
 }
@@ -290,7 +291,7 @@ pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
 
     match loops {
         Some(n) => for _ in 0..n { r(); },
-        None    => r(),
+        None    => loop { r(); p.timer.wait_ms(500) },
     }
 }
 

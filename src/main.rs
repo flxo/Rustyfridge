@@ -8,6 +8,17 @@ mod fridge;
 mod filter;
 
 #[cfg(feature = "mcu_lpc17xx")]
+#[no_mangle]
+pub unsafe extern fn __aeabi_memclr8(s: *mut u8, n: usize) -> *mut u8 {
+    let mut i = 0;
+    while i < n {
+        *s.offset(i as isize) = 0u8;
+        i += 1;
+    }
+    return s;
+} 
+
+#[cfg(feature = "mcu_lpc17xx")]
 platformtree!(
     lpc17xx@mcu {
         clock {
