@@ -142,8 +142,8 @@ impl<'s> AdcFilter<'s> {
 impl<'s> Step for AdcFilter<'s> {
     fn process(&mut self, data: &mut Data) {
         let _ = self.clock;
-        data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
         data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
+        data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
         data.current_adc = self.current_filter_plausible.filter(data.current_adc);
         data.current_adc = self.current_filter.filter(data.current_adc);
     }
