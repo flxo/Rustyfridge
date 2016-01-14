@@ -19,14 +19,15 @@ impl<'a> Clock<'a> {
     }
 
     fn now(&self) -> u64 {
-        let n = self.timer.get_counter();
-        unsafe {
-            if n < time {
-                overflows += 1;
-            }
-            time = n;
-            (overflows as u64) << 32 | (n as u64)
-        }
+        // let n = self.timer.get_counter();
+        // unsafe {
+        //     if n < time {
+        //         overflows += 1;
+        //     }
+        //     time = n;
+        //     (overflows as u64) << 32 | (n as u64)
+        // }
+        0
     }
 }
 
