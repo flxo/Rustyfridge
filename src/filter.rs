@@ -49,14 +49,14 @@ pub mod filter {
     }
 
     pub struct PlausibleFilter {
-        num_fails: u16,
-        fails: u16,
+        num_fails: u32,
+        fails: u32,
         diff: i32,
         last: Option<i32>,
     }
 
     impl PlausibleFilter {
-        pub fn new(n: u16, d: i32) -> PlausibleFilter {
+        pub fn new(n: u32, d: i32) -> PlausibleFilter {
             PlausibleFilter {
                 num_fails: n,
                 fails: 0,
@@ -71,12 +71,13 @@ pub mod filter {
             match self.last {
                 Some(x) => {
                     if (x - value).abs() <= self.diff {
+                        self.fails = 0;
                         self.last = Some(value);
                         value
                     } else {
-                        self.num_fails += 1;
+                        self.fails += 1;
                         if self.fails > self.num_fails {
-                            self.num_fails = 0;
+                            self.fails = 0;
                             self.last = Some(value);
                             value
                         } else {
