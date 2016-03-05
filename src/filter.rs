@@ -1,25 +1,27 @@
-/*
- * Copyright (C) 2016 Felix Obenhuber
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Copyright (C) 2016 Felix Obenhuber
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
+#![allow(dead_code)]
+
+/// Filter
 pub mod filter {
-
     pub trait Filter {
         fn filter(&mut self, value: i32) -> i32;
     }
 
+    /// Floating mean filter
     pub struct MeanFilter {
         last: Option<f32>,
         num: f32,
@@ -44,26 +46,8 @@ pub mod filter {
         }
     }
 
-    #[allow(dead_code)]
-    pub struct DiffFilter {
-        last: Option<i32>,
-    }
-
-    #[allow(dead_code)]
-    impl DiffFilter {
-        pub fn new() -> DiffFilter {
-            DiffFilter {
-                last: None,
-            }
-        }
-    }
-
-    impl Filter for DiffFilter {
-        fn filter(&mut self, value: i32) -> i32 {
-            value
-        }
-    }
-
+    /// Very special filter for reading but LPC17xx adc
+    /// that tends to output invalid values
     pub struct PlausibleFilter {
         num_fails: u32,
         fails: u32,

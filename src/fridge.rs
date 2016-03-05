@@ -1,20 +1,18 @@
-/*
- * Copyright (C) 2016 Felix Obenhuber
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Copyright (C) 2016 Felix Obenhuber
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#![allow(dead_code)]
 use zinc::drivers::chario::CharIO;
 use zinc::hal::pin::{Adc, Gpio};
 use zinc::hal::timer::Timer;
@@ -24,9 +22,6 @@ pub struct Clock<'a> {
     timer: &'a Timer,
 }
 
-static mut overflows: u32 = 0;
-static mut time: u32 = 0;
-
 impl<'a> Clock<'a> {
     fn new(t: &'a Timer) -> Clock {
         Clock {
@@ -35,14 +30,7 @@ impl<'a> Clock<'a> {
     }
 
     fn now(&self) -> u64 {
-        // let n = self.timer.get_counter();
-        // unsafe {
-        //     if n < time {
-        //         overflows += 1;
-        //     }
-        //     time = n;
-        //     (overflows as u64) << 32 | (n as u64)
-        // }
+        // unimplemented
         0
     }
 }
@@ -107,6 +95,8 @@ pub struct Setpoint;
 impl Setpoint {
     pub fn adc_to_mdeg(adc: i32) -> i32 {
         match adc {
+            // The log poti in the fridge is very hard to adjust, so
+            // I use three predefined temperature ranges
             0...180   => 5000,
             181...660 => 10000,
             _         => 15000,
@@ -125,7 +115,7 @@ pub struct Current;
 
 impl Current {
     pub fn adc_to_mdeg(adc: i32) -> i32 {
-        // the used sensor fails by 4deg...
+        // The temperature sensor fails by 4deg...
         adc * 100 - 4000
     }
 }
@@ -307,17 +297,7 @@ pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
     };
 
     match loops {
-        Some(n) => for _ in 0..n { r(); },
+        Some(n) => for _ in 0..n { r(); }, // this is for testing
         None    => loop { r(); p.timer.wait_ms(500) },
     }
 }
-
-mod test {
-    #[test]
-    fn adc_clip() {
-        assert!(::fridge::AdcRead::clip(0, -100, 100) == 0);
-        assert!(::fridge::AdcRead::clip(-200, -100, 100) == -100);
-        assert!(::fridge::AdcRead::clip(200, -100, 100) == 100);
-    }
-}
-
