@@ -138,8 +138,8 @@ impl<'s> AdcFilter<'s> {
     fn new(clk: &'s Clock<'s>, setpoint: i32, current: i32) -> AdcFilter {
         AdcFilter {
             clock: clk,
-            current_filter_plausible: PlausibleFilter::new(10, 50),
-            setpoint_filter_plausible : PlausibleFilter::new(10, 50),
+            current_filter_plausible: PlausibleFilter::new(10, 500),
+            setpoint_filter_plausible : PlausibleFilter::new(10, 500),
             current_filter: MeanFilter::new(current),
             setpoint_filter: MeanFilter::new(setpoint),
         }
@@ -149,9 +149,11 @@ impl<'s> AdcFilter<'s> {
 impl<'s> Step for AdcFilter<'s> {
     fn process(&mut self, data: &mut Data) {
         let _ = self.clock;
-        data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
+        // disable plausible filter
+        //data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
         data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
-        data.current_adc = self.current_filter_plausible.filter(data.current_adc);
+        // disable plausible filter
+        //data.current_adc = self.current_filter_plausible.filter(data.current_adc);
         data.current_adc = self.current_filter.filter(data.current_adc);
     }
 }
@@ -236,31 +238,32 @@ impl<'s> Trace<'s> {
 
 impl<'s> Step for Trace<'s> {
     fn process(&mut self, data: &mut Data) {
-
-        let p = |value| {
-            let v;
-            if value < 0 {
-                self.io.puts("-");
-                v = (value * -1) as u32
-            } else {
-                v = value as u32;
-            }
-            self.io.puti(v / 1000);
-            self.io.puts(".");
-            self.io.puti(v % 1000);
-            self.io.puts(" deg");
-        };
+        
+        // does not work
+        // let p = |value| {
+        //     let v;
+        //     if value < 0 {
+        //         self.io.puts("-");
+        //         v = (value * -1) as u32
+        //     } else {
+        //         v = value as u32;
+        //     }
+        //     self.io.puti(v / 1000);
+        //     self.io.puts(".");
+        //     self.io.puti(v % 1000);
+        //     self.io.puts(" deg");
+        // };
 
         match data.compressor {
             true  => self.io.puts("[cooling]: "),
             false => self.io.puts("[stopped]: "),
         }
         self.io.puts("setpoint: ");
-        p(data.setpoint_mdeg);
+        self.io.puti(data.setpoint_mdeg as u32);
         self.io.puts("\t");
         self.io.puts("current: ");
-        p(data.current_mdeg);
-        self.io.puts("\n");
+        self.io.puti(data.current_mdeg as u32);
+        self.io.puts("\r\n");
     }
 }
 
@@ -277,7 +280,7 @@ pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
     let clock = Clock::new(p.timer);
     let mut data = Data::default();
 
-    let mut adc_filter = AdcFilter::new(&clock, 10, 10);
+    let mut adc_filter = AdcFilter::new(&clock, 100, 100);
     let mut adc_input = AdcRead::new(&clock, p.current, p.setpoint);
     let mut compressor = Compressor::new(p.compressor);
     let mut control = Control::new(1000);
@@ -298,6 +301,6 @@ pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
 
     match loops {
         Some(n) => for _ in 0..n { r(); }, // this is for testing
-        None    => loop { r(); p.timer.wait_ms(500) },
+        None    => loop { r(); p.timer.wait_ms(100) },
     }
 }
