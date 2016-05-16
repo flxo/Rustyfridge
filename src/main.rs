@@ -1,4 +1,3 @@
-//
 // Copyright (C) 2016 Felix Obenhuber
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,22 +22,30 @@ extern crate zinc;
 mod fridge;
 mod filter;
 
-#[cfg(test)] mod test;
-#[cfg(test)] #[macro_use] extern crate std;
-#[cfg(test)] #[macro_use] extern crate time;
-#[cfg(test)] #[macro_use] extern crate rand;
-#[cfg(test)] #[macro_use] extern crate gnuplot;
+#[cfg(test)]mod test;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+#[cfg(test)]
+#[macro_use]
+extern crate time;
+#[cfg(test)]
+#[macro_use]
+extern crate rand;
+#[cfg(test)]
+#[macro_use]
+extern crate gnuplot;
 
 #[no_mangle]
 #[cfg(feature = "mcu_lpc17xx")]
-pub unsafe extern fn __aeabi_memclr8(s: *mut u8, n: usize) -> *mut u8 {
+pub unsafe extern "C" fn __aeabi_memclr8(s: *mut u8, n: usize) -> *mut u8 {
     let mut i = 0;
     while i < n {
         *s.offset(i as isize) = 0u8;
         i += 1;
     }
     return s;
-} 
+}
 
 #[cfg(feature = "mcu_lpc17xx")]
 platformtree!(

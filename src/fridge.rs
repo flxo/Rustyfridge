@@ -1,4 +1,3 @@
-//
 // Copyright (C) 2016 Felix Obenhuber
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +23,7 @@ pub struct Clock<'a> {
 
 impl<'a> Clock<'a> {
     fn new(t: &'a Timer) -> Clock {
-        Clock {
-            timer: t,
-        }
+        Clock { timer: t }
     }
 
     fn now(&self) -> u64 {
@@ -97,9 +94,9 @@ impl Setpoint {
         match adc {
             // The log poti in the fridge is very hard to adjust, so
             // I use three predefined temperature ranges
-            0...180   => 5000,
+            0...180 => 5000,
             181...660 => 10000,
-            _         => 15000,
+            _ => 15000,
         }
     }
 }
@@ -139,7 +136,7 @@ impl<'s> AdcFilter<'s> {
         AdcFilter {
             clock: clk,
             current_filter_plausible: PlausibleFilter::new(10, 500),
-            setpoint_filter_plausible : PlausibleFilter::new(10, 500),
+            setpoint_filter_plausible: PlausibleFilter::new(10, 500),
             current_filter: MeanFilter::new(current),
             setpoint_filter: MeanFilter::new(setpoint),
         }
@@ -150,10 +147,10 @@ impl<'s> Step for AdcFilter<'s> {
     fn process(&mut self, data: &mut Data) {
         let _ = self.clock;
         // disable plausible filter
-        //data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
+        // data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
         data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
         // disable plausible filter
-        //data.current_adc = self.current_filter_plausible.filter(data.current_adc);
+        // data.current_adc = self.current_filter_plausible.filter(data.current_adc);
         data.current_adc = self.current_filter.filter(data.current_adc);
     }
 }
@@ -175,8 +172,14 @@ impl<'s> StateLed<'s> {
 impl<'s> Step for StateLed<'s> {
     fn process(&mut self, _data: &mut Data) {
         self.on = match self.on {
-            false => { self.pin.set_high(); true },
-            true => { self.pin.set_low(); false },
+            false => {
+                self.pin.set_high();
+                true
+            }
+            true => {
+                self.pin.set_low();
+                false
+            }
         }
     }
 }
@@ -187,9 +190,7 @@ struct Control {
 
 impl Control {
     fn new(hysteresis: i32) -> Control {
-        Control {
-            hysteresis_mdeg: hysteresis,
-        }
+        Control { hysteresis_mdeg: hysteresis }
     }
 }
 
@@ -197,7 +198,8 @@ impl Step for Control {
     fn process(&mut self, data: &mut Data) {
         if data.current_mdeg >= (data.setpoint_mdeg + self.hysteresis_mdeg) {
             data.compressor = true;
-        } if data.current_mdeg <= (data.setpoint_mdeg - self.hysteresis_mdeg) {
+        }
+        if data.current_mdeg <= (data.setpoint_mdeg - self.hysteresis_mdeg) {
             data.compressor = false;
         }
     }
@@ -209,9 +211,7 @@ struct Compressor<'s> {
 
 impl<'s> Compressor<'s> {
     fn new(p: &'s Gpio) -> Compressor {
-        Compressor {
-            pin: p,
-        }
+        Compressor { pin: p }
     }
 }
 
@@ -219,7 +219,7 @@ impl<'s> Step for Compressor<'s> {
     fn process(&mut self, data: &mut Data) {
         match data.compressor {
             false => self.pin.set_low(),
-            true  => self.pin.set_high(),
+            true => self.pin.set_high(),
         }
     }
 }
@@ -230,15 +230,13 @@ pub struct Trace<'s> {
 
 impl<'s> Trace<'s> {
     pub fn new(cio: &'s CharIO) -> Trace {
-        Trace {
-            io: cio,
-        }
+        Trace { io: cio }
     }
 }
 
 impl<'s> Step for Trace<'s> {
     fn process(&mut self, data: &mut Data) {
-        
+
         // does not work
         // let p = |value| {
         //     let v;
@@ -255,7 +253,7 @@ impl<'s> Step for Trace<'s> {
         // };
 
         match data.compressor {
-            true  => self.io.puts("[cooling]: "),
+            true => self.io.puts("[cooling]: "),
             false => self.io.puts("[stopped]: "),
         }
         self.io.puts("setpoint: ");
@@ -300,7 +298,16 @@ pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
     };
 
     match loops {
-        Some(n) => for _ in 0..n { r(); }, // this is for testing
-        None    => loop { r(); p.timer.wait_ms(100) },
+        Some(n) => {
+            for _ in 0..n {
+                r();
+            }
+        } // this is for testing
+        None => {
+            loop {
+                r();
+                p.timer.wait_ms(100)
+            }
+        }
     }
 }

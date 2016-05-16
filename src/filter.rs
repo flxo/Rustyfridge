@@ -1,4 +1,3 @@
-//
 // Copyright (C) 2016 Felix Obenhuber
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +39,7 @@ pub mod filter {
         fn filter(&mut self, value: i32) -> i32 {
             self.last = match self.last {
                 Some(l) => Some((l * (self.num - 1.0) + value as f32) / self.num),
-                None    => Some(value as f32),
+                None => Some(value as f32),
             };
             self.last.unwrap() as i32
         }
@@ -65,7 +64,7 @@ pub mod filter {
             }
         }
     }
-    
+
     impl Filter for PlausibleFilter {
         fn filter(&mut self, value: i32) -> i32 {
             match self.last {
@@ -84,8 +83,11 @@ pub mod filter {
                             self.last.unwrap()
                         }
                     }
-                },
-                None => { self.last = Some(value); value },
+                }
+                None => {
+                    self.last = Some(value);
+                    value
+                }
             }
         }
     }
