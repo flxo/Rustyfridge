@@ -18,19 +18,14 @@ Things may not be optimal... ;-)
 Build
 -----
 
-Zinc is quite picky about the used Rust toolchain. One of the latest usable versions
-is the Nightly from January 2016. Install via Multirust:
-
-```
-multirust override nightly-2016-01-12
-```
-
 Target build:
+
 ```
 cargo build --target=thumbv7m-none-eabi --features "mcu_lpc17xx" --release --verbose
 ```
 
 Build and run tests:
+
 ```
 cargo test --features test
 ```
