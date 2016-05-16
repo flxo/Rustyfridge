@@ -15,22 +15,6 @@
 use zinc::drivers::chario::CharIO;
 use zinc::hal::pin::{Adc, Gpio};
 use zinc::hal::timer::Timer;
-use filter::filter::{Filter, MeanFilter, PlausibleFilter};
-
-pub struct Clock<'a> {
-    timer: &'a Timer,
-}
-
-impl<'a> Clock<'a> {
-    fn new(t: &'a Timer) -> Clock {
-        Clock { timer: t }
-    }
-
-    fn now(&self) -> u64 {
-        // unimplemented
-        0
-    }
-}
 
 #[derive(Default, Clone)]
 pub struct Data {
@@ -44,20 +28,82 @@ pub struct Data {
     pub compressor: bool,
 }
 
-pub trait Step {
-    fn process(&mut self, data: &mut Data);
+/// Floating mean filter
+pub struct MeanFilter {
+    last: Option<f32>,
+    num: f32,
+}
+
+impl MeanFilter {
+    pub fn new(n: i32) -> MeanFilter {
+        MeanFilter {
+            last: None,
+            num: n as f32,
+        }
+    }
+
+    fn filter(&mut self, value: i32) -> i32 {
+        self.last = match self.last {
+            Some(l) => Some((l * (self.num - 1.0) + value as f32) / self.num),
+            None => Some(value as f32),
+        };
+        self.last.unwrap() as i32
+    }
+}
+
+/// Very special filter for reading but LPC17xx adc
+/// that tends to output invalid values
+pub struct PlausibleFilter {
+    num_fails: u32,
+    fails: u32,
+    diff: i32,
+    last: Option<i32>,
+}
+
+impl PlausibleFilter {
+    pub fn new(n: u32, d: i32) -> PlausibleFilter {
+        PlausibleFilter {
+            num_fails: n,
+            fails: 0,
+            diff: d,
+            last: None,
+        }
+    }
+
+    fn filter(&mut self, value: i32) -> i32 {
+        match self.last {
+            Some(x) => {
+                if (x - value).abs() <= self.diff {
+                    self.fails = 0;
+                    self.last = Some(value);
+                    value
+                } else {
+                    self.fails += 1;
+                    if self.fails > self.num_fails {
+                        self.fails = 0;
+                        self.last = Some(value);
+                        value
+                    } else {
+                        self.last.unwrap()
+                    }
+                }
+            }
+            None => {
+                self.last = Some(value);
+                value
+            }
+        }
+    }
 }
 
 struct AdcRead<'s> {
-    clock: &'s Clock<'s>,
     current: &'s Adc,
     setpoint: &'s Adc,
 }
 
 impl<'s> AdcRead<'s> {
-    fn new(clk: &'s Clock<'s>, c: &'s Adc, s: &'s Adc) -> AdcRead<'s> {
+    fn new(c: &'s Adc, s: &'s Adc) -> AdcRead<'s> {
         AdcRead {
-            clock: clk,
             current: c,
             setpoint: s,
         }
@@ -72,17 +118,14 @@ impl<'s> AdcRead<'s> {
             value
         }
     }
-}
 
-impl<'s> Step for AdcRead<'s> {
     fn process(&mut self, data: &mut Data) {
-        data.timestamp = self.clock.now();
         let current = self.current.read() as i32;
         data.current_adc_raw = current;
-        data.current_adc = AdcRead::clip(current, 0, 4096);
+        data.current_adc = Self::clip(current, 0, 4096);
         let setpoint = self.setpoint.read() as i32;
         data.setpoint_adc_raw = setpoint;
-        data.setpoint_adc = AdcRead::clip(setpoint, 0, 4096);
+        data.setpoint_adc = Self::clip(setpoint, 0, 4096);
     }
 }
 
@@ -90,8 +133,8 @@ impl<'s> Step for AdcRead<'s> {
 pub struct Setpoint;
 
 impl Setpoint {
-    pub fn adc_to_mdeg(adc: i32) -> i32 {
-        match adc {
+    fn process(&mut self, data: &mut Data) {
+        data.setpoint_mdeg = match data.setpoint_adc {
             // The log poti in the fridge is very hard to adjust, so
             // I use three predefined temperature ranges
             0...180 => 5000,
@@ -101,56 +144,37 @@ impl Setpoint {
     }
 }
 
-impl Step for Setpoint {
-    fn process(&mut self, data: &mut Data) {
-        data.setpoint_mdeg = Setpoint::adc_to_mdeg(data.setpoint_adc)
-    }
-}
-
 #[derive(Default)]
 pub struct Current;
 
 impl Current {
-    pub fn adc_to_mdeg(adc: i32) -> i32 {
-        // The temperature sensor fails by 4deg...
-        adc * 100 - 4000
-    }
-}
-
-impl Step for Current {
     fn process(&mut self, data: &mut Data) {
-        data.current_mdeg = Current::adc_to_mdeg(data.current_adc);
+        // The temperature sensor fails by 4deg...
+        data.current_mdeg = data.current_adc * 100 - 4000;
     }
 }
 
-struct AdcFilter<'s> {
-    clock: &'s Clock<'s>,
+struct AdcFilter {
     current_filter_plausible: PlausibleFilter,
     setpoint_filter_plausible: PlausibleFilter,
     current_filter: MeanFilter,
     setpoint_filter: MeanFilter,
 }
 
-impl<'s> AdcFilter<'s> {
-    fn new(clk: &'s Clock<'s>, setpoint: i32, current: i32) -> AdcFilter {
+impl<'s> AdcFilter {
+    fn new(setpoint: i32, current: i32) -> AdcFilter {
         AdcFilter {
-            clock: clk,
-            current_filter_plausible: PlausibleFilter::new(10, 500),
-            setpoint_filter_plausible: PlausibleFilter::new(10, 500),
+            current_filter_plausible: PlausibleFilter::new(5, 50),
+            setpoint_filter_plausible: PlausibleFilter::new(5, 50),
             current_filter: MeanFilter::new(current),
             setpoint_filter: MeanFilter::new(setpoint),
         }
     }
-}
 
-impl<'s> Step for AdcFilter<'s> {
     fn process(&mut self, data: &mut Data) {
-        let _ = self.clock;
-        // disable plausible filter
-        // data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
+        data.setpoint_adc = self.setpoint_filter_plausible.filter(data.setpoint_adc);
         data.setpoint_adc = self.setpoint_filter.filter(data.setpoint_adc);
-        // disable plausible filter
-        // data.current_adc = self.current_filter_plausible.filter(data.current_adc);
+        data.current_adc = self.current_filter_plausible.filter(data.current_adc);
         data.current_adc = self.current_filter.filter(data.current_adc);
     }
 }
@@ -167,9 +191,7 @@ impl<'s> StateLed<'s> {
             pin: l,
         }
     }
-}
 
-impl<'s> Step for StateLed<'s> {
     fn process(&mut self, _data: &mut Data) {
         self.on = match self.on {
             false => {
@@ -192,9 +214,7 @@ impl Control {
     fn new(hysteresis: i32) -> Control {
         Control { hysteresis_mdeg: hysteresis }
     }
-}
 
-impl Step for Control {
     fn process(&mut self, data: &mut Data) {
         if data.current_mdeg >= (data.setpoint_mdeg + self.hysteresis_mdeg) {
             data.compressor = true;
@@ -213,15 +233,17 @@ impl<'s> Compressor<'s> {
     fn new(p: &'s Gpio) -> Compressor {
         Compressor { pin: p }
     }
-}
 
-impl<'s> Step for Compressor<'s> {
     fn process(&mut self, data: &mut Data) {
         match data.compressor {
             false => self.pin.set_low(),
             true => self.pin.set_high(),
         }
     }
+}
+
+pub trait Tracer {
+    fn trace(&mut self, data: &mut Data);
 }
 
 pub struct Trace<'s> {
@@ -234,24 +256,8 @@ impl<'s> Trace<'s> {
     }
 }
 
-impl<'s> Step for Trace<'s> {
-    fn process(&mut self, data: &mut Data) {
-
-        // does not work
-        // let p = |value| {
-        //     let v;
-        //     if value < 0 {
-        //         self.io.puts("-");
-        //         v = (value * -1) as u32
-        //     } else {
-        //         v = value as u32;
-        //     }
-        //     self.io.puti(v / 1000);
-        //     self.io.puts(".");
-        //     self.io.puti(v % 1000);
-        //     self.io.puts(" deg");
-        // };
-
+impl<'s> Tracer for Trace<'s> {
+    fn trace(&mut self, data: &mut Data) {
         match data.compressor {
             true => self.io.puts("[cooling]: "),
             false => self.io.puts("[stopped]: "),
@@ -274,12 +280,11 @@ pub struct Platform<'a> {
     pub uart: &'a CharIO,
 }
 
-pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
-    let clock = Clock::new(p.timer);
+pub fn run(p: &Platform, tracer: &mut Tracer, loops: Option<u32>) {
     let mut data = Data::default();
 
-    let mut adc_filter = AdcFilter::new(&clock, 100, 100);
-    let mut adc_input = AdcRead::new(&clock, p.current, p.setpoint);
+    let mut adc_filter = AdcFilter::new(50, 50);
+    let mut adc_input = AdcRead::new(p.current, p.setpoint);
     let mut compressor = Compressor::new(p.compressor);
     let mut control = Control::new(1000);
     let mut current = Current::default();
@@ -294,7 +299,7 @@ pub fn run(p: &Platform, logger: &mut Step, loops: Option<u32>) {
         control.process(&mut data);
         compressor.process(&mut data);
         state_led.process(&mut data);
-        logger.process(&mut data);
+        tracer.trace(&mut data);
     };
 
     match loops {

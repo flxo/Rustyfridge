@@ -20,9 +20,9 @@
 extern crate zinc;
 
 mod fridge;
-mod filter;
+#[cfg(test)]
+mod test;
 
-#[cfg(test)]mod test;
 #[cfg(test)]
 #[macro_use]
 extern crate std;
@@ -113,6 +113,6 @@ fn run(args: &pt::run_args) {
         timer: args.timer,
         uart: args.uart,
     };
-    let mut logger = ::fridge::Trace::new(args.uart);
-    fridge::run(&p, &mut logger, None);
+    let mut tracer = ::fridge::Trace::new(args.uart);
+    fridge::run(&p, &mut tracer, None);
 }
