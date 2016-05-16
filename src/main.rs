@@ -86,9 +86,9 @@ os {
         loop = "run";
         args {
             compressor = &compressor;
-            current = &adc0;
+            current = &adc2;
             led = &led;
-            setpoint = &adc2;
+            setpoint = &adc0;
             timer = &timer;
             uart = &uart;
         }
