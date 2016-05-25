@@ -182,6 +182,7 @@ impl<'s> AdcFilter {
 struct StateLed<'s> {
     on: bool,
     pin: &'s Gpio,
+    run: u8,
 }
 
 impl<'s> StateLed<'s> {
@@ -189,19 +190,34 @@ impl<'s> StateLed<'s> {
         StateLed {
             on: false,
             pin: l,
+            run: 0,
         }
     }
 
-    fn process(&mut self, _data: &mut Data) {
-        self.on = match self.on {
-            false => {
-                self.pin.set_high();
-                true
+    fn process(&mut self, data: &mut Data) {
+        let rate = if data.compressor {
+            1
+        } else {
+            10
+        };
+
+        if self.run % rate == 0 {
+            self.on = match self.on {
+                false => {
+                    self.pin.set_high();
+                    true
+                }
+                true => {
+                    self.pin.set_low();
+                    false
+                }
             }
-            true => {
-                self.pin.set_low();
-                false
-            }
+        }
+
+        self.run = if self.run == 0xFE {
+            0
+        } else {
+            self.run + 1
         }
     }
 }
