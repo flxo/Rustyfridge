@@ -164,8 +164,8 @@ struct AdcFilter {
 impl<'s> AdcFilter {
     fn new(setpoint: i32, current: i32) -> AdcFilter {
         AdcFilter {
-            current_filter_plausible: PlausibleFilter::new(5, 50),
-            setpoint_filter_plausible: PlausibleFilter::new(5, 50),
+            current_filter_plausible: PlausibleFilter::new(5, 500),
+            setpoint_filter_plausible: PlausibleFilter::new(5, 500),
             current_filter: MeanFilter::new(current),
             setpoint_filter: MeanFilter::new(setpoint),
         }
@@ -283,7 +283,7 @@ pub struct Platform<'a> {
 pub fn run(p: &Platform, tracer: &mut Tracer, loops: Option<u32>) {
     let mut data = Data::default();
 
-    let mut adc_filter = AdcFilter::new(50, 50);
+    let mut adc_filter = AdcFilter::new(5, 10);
     let mut adc_input = AdcRead::new(p.current, p.setpoint);
     let mut compressor = Compressor::new(p.compressor);
     let mut control = Control::new(1000);
