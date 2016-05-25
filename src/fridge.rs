@@ -302,6 +302,9 @@ pub fn run(p: &Platform, tracer: &mut Tracer, loops: Option<u32>) {
         tracer.trace(&mut data);
     };
 
+    // Add some start delay because the ADCs are failling directly after POR
+    p.timer.wait_ms(5000);
+
     match loops {
         Some(n) => {
             for _ in 0..n {
