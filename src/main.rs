@@ -15,39 +15,21 @@
 #![no_std]
 #![feature(start, plugin, core_intrinsics)]
 #![plugin(macro_platformtree)]
-#![allow(dead_code)]
 
 extern crate zinc;
 
-mod fridge;
-#[cfg(test)]
-mod test;
+use zinc::drivers::chario::CharIO;
+use zinc::hal::pin::{Adc, Gpio};
+use zinc::hal::timer::Timer;
 
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-#[cfg(test)]
-#[macro_use]
-extern crate time;
-#[cfg(test)]
-#[macro_use]
-extern crate rand;
-#[cfg(test)]
-#[macro_use]
-extern crate gnuplot;
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const TEMP_LOW: i32 = 5000;
+const TEMP_MID: i32 = 10000;
+const TEMP_HIGH: i32 = 15000;
+const CONTROL_HYSTERESIS: i32 = 1000;
+const ACTUAL_FILTER: i32 = 10;
+const SETPOINT_FILTER: i32 = 5;
 
-#[no_mangle]
-#[cfg(feature = "mcu_lpc17xx")]
-pub unsafe extern "C" fn __aeabi_memclr8(s: *mut u8, n: usize) -> *mut u8 {
-    let mut i = 0;
-    while i < n {
-        *s.offset(i as isize) = 0u8;
-        i += 1;
-    }
-    return s;
-}
-
-#[cfg(feature = "mcu_lpc17xx")]
 platformtree!(
     lpc17xx@mcu {
         clock {
@@ -87,13 +69,12 @@ platformtree!(
             }
         }
     }
-
 os {
     single_task {
         loop = "run";
         args {
             compressor = &compressor;
-            current = &adc2;
+            actual = &adc2;
             led = &led;
             setpoint = &adc0;
             timer = &timer;
@@ -103,16 +84,101 @@ os {
 }
 );
 
-#[cfg(feature = "mcu_lpc17xx")]
 fn run(args: &pt::run_args) {
-    let p = fridge::Platform {
-        compressor: args.compressor,
-        led: args.led,
-        current: args.current,
-        setpoint: args.setpoint,
-        timer: args.timer,
-        uart: args.uart,
+    args.uart.puts("Rustyfridge ");
+    args.uart.puts(VERSION);
+    args.uart.puts("\r\n");
+
+    args.timer.wait_ms(2000);
+
+    let mut loops: u32 = 0;
+    let mut actual_filter: Option<i32> = None;
+    let mut setpoint_filter: Option<i32> = None;
+    let mut cool: bool = false;
+
+    // Simple floating mean filter
+    let filter = |value: i32, last: &mut Option<i32>, factor: i32| -> i32 {
+        *last = match *last {
+            Some(v) => Some(((v * (factor - 1)) + value) / factor),
+            None => Some(value),
+        };
+        last.unwrap()
     };
-    let mut tracer = ::fridge::Trace::new(args.uart);
-    fridge::run(&p, &mut tracer, None);
+
+    loop {
+        // Actual value needs a fixed offset and factor for conversion to mdeg
+        let actual = filter(args.actual.read() as i32, &mut actual_filter, ACTUAL_FILTER) * 100 - 4000;
+
+        // Setpoint matches log poti in three ranges
+        let setpoint = match filter(args.setpoint.read() as i32, &mut setpoint_filter, SETPOINT_FILTER) {
+            0...180 => TEMP_LOW,
+            181...660 => TEMP_MID,
+            _ => TEMP_HIGH,
+        };
+
+        // Decide whether to cool or not
+        cool = if (actual - setpoint).abs() > CONTROL_HYSTERESIS {
+            actual > setpoint
+        } else {
+            cool
+        };
+        if cool {
+            args.compressor.set_high();
+        } else {
+            args.compressor.set_low();
+        }
+
+        // Blink faster if compressor is running
+        if loops & if cool {
+            0x4
+        } else {
+            0x8
+        } != 0 {
+            args.led.set_high();
+        } else {
+            args.led.set_low();
+        }
+
+        // Basic formatting
+        let print_deg = |value: i32| {
+            if value > -100000 && value < 100000 {
+                args.uart.puts(" ");
+            }
+            if value > -10000 && value < 10000 {
+                args.uart.puts(" ");
+            }
+            let v = if value < 0 {
+                args.uart.puts("-");
+                -value as u32
+            } else {
+                args.uart.puts(" ");
+                value as u32
+            };
+            args.uart.puti(v / 1000);
+            args.uart.puts(".");
+            args.uart.puti((v % 1000) / 100);
+        };
+
+        // Trace current state
+        args.uart.puts(if cool {
+            "❄ "
+        } else {
+            "  "
+        });
+        print_deg(actual);
+        args.uart.puts(" | ");
+        print_deg(setpoint);
+        args.uart.puts(" | diff: ");
+        print_deg(setpoint - actual);
+        args.uart.puts("\r\n");
+
+        // Update loop counter
+        if loops == u32::max_value() {
+            loops = 0;
+        } else {
+            loops += 1;
+        }
+
+        args.timer.wait_ms(100);
+    }
 }

@@ -2,11 +2,8 @@
 name = "rustyfridge"
 version = "0.0.1"
 dependencies = [
- "gnuplot 0.0.20 (registry+https://github.com/rust-lang/crates.io-index)",
  "macro_platformtree 0.1.0",
- "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "time 0.1.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "zinc 0.1.0",
 ]
 
@@ -25,22 +22,8 @@ version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "gnuplot"
-version = "0.0.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "ioreg"
 version = "0.1.0"
-
-[[package]]
-name = "kernel32-sys"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "winapi 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "libc"
@@ -110,32 +93,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "time"
-version = "0.1.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "winapi 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "volatile_cell"
 version = "1.0.0"
 dependencies = [
  "expectest 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "winapi"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "winapi-build"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "zinc"
