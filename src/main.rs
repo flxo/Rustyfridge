@@ -28,7 +28,7 @@ const TEMP_MID: i32 = 10000;
 const TEMP_HIGH: i32 = 15000;
 const CONTROL_HYSTERESIS: i32 = 1000;
 const ACTUAL_FILTER: i32 = 10;
-const SETPOINT_FILTER: i32 = 5;
+const SETPOINT_FILTER: i32 = 10;
 
 platformtree!(
     lpc17xx@mcu {
