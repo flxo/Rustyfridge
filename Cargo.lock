@@ -1,6 +1,6 @@
 [root]
 name = "rustyfridge"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "macro_platformtree 0.1.0",
  "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
