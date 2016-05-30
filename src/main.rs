@@ -27,8 +27,12 @@ const TEMP_LOW: i32 = 5000;
 const TEMP_MID: i32 = 10000;
 const TEMP_HIGH: i32 = 15000;
 const CONTROL_HYSTERESIS: i32 = 1000;
-const ACTUAL_FILTER: i32 = 10;
-const SETPOINT_FILTER: i32 = 10;
+const ACTUAL_FACTOR: i32 = 10;
+const ACTUAL_ALLOWED_DIFF: i32 = 250;
+const ACTUAL_ALLOWED_FAILS: u32 = 10;
+const SETPOINT_FACTOR: i32 = 10;
+const SETPOINT_ALLOWED_DIFF: i32 = 250;
+const SETPOINT_ALLOWED_FAILS: u32 = 10;
 
 platformtree!(
     lpc17xx@mcu {
@@ -92,25 +96,16 @@ fn run(args: &pt::run_args) {
     args.timer.wait_ms(2000);
 
     let mut loops: u32 = 0;
-    let mut actual_filter: Option<i32> = None;
-    let mut setpoint_filter: Option<i32> = None;
+    let mut actual_filter = Filter::new(ACTUAL_FACTOR, ACTUAL_ALLOWED_DIFF, ACTUAL_ALLOWED_FAILS);
+    let mut setpoint_filter = Filter::new(SETPOINT_FACTOR, SETPOINT_ALLOWED_DIFF, SETPOINT_ALLOWED_FAILS);
     let mut cool: bool = false;
-
-    // Simple floating mean filter
-    let filter = |value: i32, last: &mut Option<i32>, factor: i32| -> i32 {
-        *last = match *last {
-            Some(v) => Some(((v * (factor - 1)) + value) / factor),
-            None => Some(value),
-        };
-        last.unwrap()
-    };
 
     loop {
         // Actual value needs a fixed offset and factor for conversion to mdeg
-        let actual = filter(args.actual.read() as i32, &mut actual_filter, ACTUAL_FILTER) * 100 - 4000;
+        let actual = actual_filter.filter(args.actual.read() as i32) * 100 - 4000;
 
         // Setpoint matches log poti in three ranges
-        let setpoint = match filter(args.setpoint.read() as i32, &mut setpoint_filter, SETPOINT_FILTER) {
+        let setpoint = match setpoint_filter.filter(args.setpoint.read() as i32) {
             0...180 => TEMP_LOW,
             181...660 => TEMP_MID,
             _ => TEMP_HIGH,
@@ -180,5 +175,53 @@ fn run(args: &pt::run_args) {
         }
 
         args.timer.wait_ms(100);
+    }
+}
+
+struct Filter {
+    last: Option<i32>,
+    factor: i32,
+    max_difference: i32,
+    current_fails: u32,
+    allowed_fails: u32,
+}
+
+impl Filter {
+    fn new(factor: i32, max_difference: i32, allowed_fails: u32) -> Filter {
+        assert!(factor >= 2);
+        assert!(allowed_fails >= 2);
+        Filter {
+            last: None,
+            factor: factor,
+            max_difference: max_difference,
+            current_fails: allowed_fails,
+            allowed_fails: allowed_fails,
+        }
+    }
+
+    fn filter(&mut self, value: i32) -> i32 {
+        let next = match self.last {
+            Some(last) => {
+                if (last - value).abs() < self.max_difference {
+                    self.current_fails = 0;
+                    value
+                } else {
+                    if self.current_fails <= self.allowed_fails {
+                        self.current_fails += 1;
+                        last
+                    } else {
+                        self.current_fails = 0;
+                        value
+                    }
+                }
+            },
+            None => value,
+        };
+
+        self.last = match self.last {
+            Some(v) => Some((v * (self.factor - 1) + next) / self.factor),
+            None => Some(next),
+        };
+        self.last.unwrap()
     }
 }
