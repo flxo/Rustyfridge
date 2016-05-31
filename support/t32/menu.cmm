@@ -1,0 +1,52 @@
+MENU.ReProgram
+( 
+	MENU
+	(
+		POPUP "&Flash"
+		(
+			MENUITEM	"Flash ELF File"
+			(
+				DO t32/flash_elf_file.cmm
+			)
+			MENUITEM	"Flash Erase"
+			(
+				DO t32/erase.cmm
+			)
+			SEPARATOR
+			MENUITEM	"Load Symbols"
+			(
+				DO t32/load_symbols.cmm
+			)
+		)
+	)
+   ADD
+   TOOLBAR 
+   ( 
+		TOOLITEM "Attach to target" "[:gonext]" "DO t32/attach.cmm"
+		TOOLITEM "In Target Reset   F12"
+		(
+			DO t32/reset
+		)
+        [
+          XXX
+         XXX
+        XXX
+       XXX
+      XXX
+     XXXXXXXXXXX
+            XXX
+           XXX
+          XXX
+         XXX
+        XXX
+   XXXXXXXXXXXXX
+    XXXXXXXXXX
+     XXXXXXX
+      XXXX
+       X
+        ]
+		SEPARATOR
+   		TOOLITEM "Flash last Application" "[:flash]" "DO t32/flash_last.cmm"
+   ) 
+) 
+

@@ -1,0 +1,5 @@
+DO t32/selectFile.cmm
+IF ("&operationStatus"=="OK")
+(
+	Data.LOAD.ELF "&currentFile"
+)

@@ -1,0 +1,14 @@
+&selectFileExtension="*"
+DO t32/selectFile.cmm
+
+IF ("&operationStatus"=="OK")
+(
+	DO t32/reset.cmm
+	DO ~~/demo/arm/flash/lpc17xx PREPAREONLY
+
+	FLASH.ReProgram ALL
+	Data.LOAD.Elf "&currentFile"
+	do t32/write_checksum.cmm
+	FLASH.ReProgram OFF
+	DO t32/reset.cmm
+)

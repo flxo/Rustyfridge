@@ -1,0 +1,24 @@
+SYStem.CPU LPC1768
+SYStem.CONFIG CONNECTOR MIPI20T
+SYStem.CONFIG SWDP    ON
+SYStem.OPTION EnReset OFF
+DO ~~/demo/arm/flash/lpc17xx PREPAREONLY
+
+
+GLOBAL &lastSelectedFile
+GLOBAL &lastSelectedApplicationFile
+GLOBAL &currentFile
+GLOBAL &currentFileFolder
+GLOBAL &selectFileExtension
+GLOBAL &operationStatus
+
+&selectFileExtension="*"
+DO t32/menu.cmm
+DO t32/window.cmm
+
+&lastSelectedApplicationFile=""
+
+System.OPTION.IMASKASM ON 
+System.OPTION.IMASKHLL ON 
+ 
+ENDDO

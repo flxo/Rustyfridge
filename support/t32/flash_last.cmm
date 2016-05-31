@@ -1,0 +1,10 @@
+IF ("&lastSelectedFile"!="")
+(
+	&currentFile="&lastSelectedFile"
+	DO t32/reset.cmm
+	FLASH.ReProgram 0x10000--0x60000
+	Data.LOAD.ELF "&currentFile"
+	do t32/write_checksum.cmm
+	FLASH.ReProgram OFF
+	DO t32/reset.cmm
+)
