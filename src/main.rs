@@ -97,7 +97,9 @@ fn run(args: &pt::run_args) {
 
     let mut loops: u32 = 0;
     let mut actual_filter = Filter::new(ACTUAL_FACTOR, ACTUAL_ALLOWED_DIFF, ACTUAL_ALLOWED_FAILS);
-    let mut setpoint_filter = Filter::new(SETPOINT_FACTOR, SETPOINT_ALLOWED_DIFF, SETPOINT_ALLOWED_FAILS);
+    let mut setpoint_filter = Filter::new(SETPOINT_FACTOR,
+                                          SETPOINT_ALLOWED_DIFF,
+                                          SETPOINT_ALLOWED_FAILS);
     let mut cool: bool = false;
 
     loop {
@@ -124,7 +126,8 @@ fn run(args: &pt::run_args) {
         }
 
         // Blink faster if compressor is running
-        if loops & if cool {
+        if loops &
+           if cool {
             0x4
         } else {
             0x8
@@ -214,7 +217,7 @@ impl Filter {
                         value
                     }
                 }
-            },
+            }
             None => value,
         };
 
