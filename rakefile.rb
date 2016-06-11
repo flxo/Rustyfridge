@@ -1,6 +1,6 @@
 desc "build"
 task :build do
-  system "cargo build --target=thumbv7m-none-eabi --features \"mcu_lpc17xx\" --release"
+  system "cargo build --target=thumbv7m-none-eabi --release"
 end
 
 desc "cleanup"
