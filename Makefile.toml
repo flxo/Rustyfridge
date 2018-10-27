@@ -1,0 +1,19 @@
+[env]
+ELF_FILE_NAME="target/tab/tockfridge/cortex-m4.elf"
+TAB_FILE_NAME="target/tab/tockfridge.tab"
+
+[tasks.build]
+clear = true
+command = "cargo"
+args = ["build", "--release", "--target=thumbv7em-none-eabi"]
+
+[tasks.run]
+dependencies = ["build"]
+script = [
+    "mkdir -p target/tab/tockfridge",
+    "cp target/thumbv7em-none-eabi/release/tockfridge ${ELF_FILE_NAME}",
+    "elf2tab -n tockfridge -o ${TAB_FILE_NAME} ${ELF_FILE_NAME} --stack 2048 --app-heap 1024 --kernel-heap 1024",
+    "tockloader uninstall",
+    "tockloader install ${TAB_FILE_NAME}",
+    "tockloader listen",
+]

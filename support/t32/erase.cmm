@@ -1,2 +1,0 @@
-DO t32/reset.cmm
-FLASH.ERASE all

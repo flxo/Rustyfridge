@@ -1,3 +1,8 @@
-[target.thumbv7m-none-eabi]
-linker = "arm-none-eabi-gcc"
-ar = "arm-none-eabi-ar"
+[target.thumbv7em-none-eabi]
+rustflags = [
+  "-C", "link-arg=-Tlayout.ld",
+  "-C", "linker=rust-lld",
+  "-Z", "linker-flavor=ld.lld",
+  "-C", "relocation-model=ropi-rwpi",
+  #"-D", "warnings",
+]

@@ -1,61 +1,46 @@
-[root]
-name = "rustyfridge"
-version = "0.0.2"
+[[package]]
+name = "linked_list_allocator"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "ioreg 0.1.0 (git+https://github.com/hackndev/zinc.git)",
- "macro_platformtree 0.1.0 (git+https://github.com/hackndev/zinc.git)",
- "platformtree 0.1.0 (git+https://github.com/hackndev/zinc.git)",
- "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "zinc 0.1.0 (git+https://github.com/hackndev/zinc.git)",
+ "spin 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
-name = "ioreg"
-version = "0.1.0"
-source = "git+https://github.com/hackndev/zinc.git#d097403961421fe1d2062e66f1878d78c523bb99"
-
-[[package]]
-name = "macro_platformtree"
-version = "0.1.0"
-source = "git+https://github.com/hackndev/zinc.git#d097403961421fe1d2062e66f1878d78c523bb99"
+name = "proc-macro2"
+version = "0.4.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "platformtree 0.1.0 (git+https://github.com/hackndev/zinc.git)",
+ "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
-name = "platformtree"
-version = "0.1.0"
-source = "git+https://github.com/hackndev/zinc.git#d097403961421fe1d2062e66f1878d78c523bb99"
-
-[[package]]
-name = "rlibc"
-version = "0.1.4"
-source = "git+https://github.com/hackndev/rlibc?branch=zinc#620489f8badd698f4440fd19889c308d8ab41078"
-dependencies = [
- "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "rust-libcore"
-version = "0.0.3"
+name = "spin"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "volatile_cell"
-version = "1.0.0"
-source = "git+https://github.com/hackndev/zinc.git#d097403961421fe1d2062e66f1878d78c523bb99"
+name = "tock"
+version = "0.1.0"
 dependencies = [
- "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "linked_list_allocator 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
-name = "zinc"
+name = "tockfridge"
 version = "0.1.0"
-source = "git+https://github.com/hackndev/zinc.git#d097403961421fe1d2062e66f1878d78c523bb99"
 dependencies = [
- "ioreg 0.1.0 (git+https://github.com/hackndev/zinc.git)",
- "rlibc 0.1.4 (git+https://github.com/hackndev/rlibc?branch=zinc)",
- "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "volatile_cell 1.0.0 (git+https://github.com/hackndev/zinc.git)",
+ "tock 0.1.0",
 ]
 
+[[package]]
+name = "unicode-xid"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[metadata]
+"checksum linked_list_allocator 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "655d57c71827fe0891ce72231b6aa5e14033dae3f604609e6a6f807267c1678d"
+"checksum proc-macro2 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)" = "ee5697238f0d893c7f0ecc59c0999f18d2af85e424de441178bcacc9f9e6cf67"
+"checksum spin 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)" = "37b5646825922b96b5d7d676b5bb3458a54498e96ed7b0ce09dc43a07038fea4"
+"checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"

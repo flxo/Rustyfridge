@@ -1,26 +1,15 @@
 [package]
-name = "rustyfridge"
-version = "0.0.2"
-authors = ["Felix Obenhuber <felix@obenhuber.de>"]
+name = "tockfridge"
+version = "0.1.0"
+authors = ["Felix Obenhuber <felix.obenhuber@esrlabs.com>"]
 
-[dependencies.zinc]
-git = "https://github.com/hackndev/zinc.git"
-features = ["mcu_lpc17xx"]
+[dependencies]
+tock = { path = "../libtock-rs" }
 
-[dependencies.macro_platformtree]
-git = "https://github.com/hackndev/zinc.git"
-path = "macro_platformtree"
+[profile.dev]
+panic = "abort"
+lto = true
 
-[dependencies.ioreg]
-git = "https://github.com/hackndev/zinc.git"
-path = "ioreg"
-
-[dependencies.platformtree]
-git = "https://github.com/hackndev/zinc.git"
-path = "platformtree"
-
-[dependencies.rust-libcore]
-version = "*"
-
-[[bin]]
-name = "rustyfridge"
+[profile.release]
+panic = "abort"
+lto = true
